@@ -1,49 +1,94 @@
-import { useEffect, useRef } from 'react';
-import { createChart, ColorType, CandlestickSeries } from 'lightweight-charts';
+import { CandlestickSeries, ColorType, createChart } from 'lightweight-charts'
+import type { ISeriesApi, CandlestickData } from 'lightweight-charts';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { VStack, Box } from '@chakra-ui/react';
+import { useBybitSocket } from './utils/useBybitSocket';
 
-interface Candle {
-    time: number;
-    open: number;
-    high: number;
-    low: number;
-    close: number;
+interface CandleProps {
+  symbol: string;
+  interval: string;
 }
 
-export default function CandleChart({ candle }: { candle: Candle }) {
-  const containerRef = useRef<HTMLDivElement>(null);
+type CandlestickSeries = ISeriesApi<'Candlestick'>;
 
-  useEffect(() => {
-    if (!containerRef.current) return;
+const getCandle = (message: any): CandlestickData | null => {
+  const data = message.data;
+  const candleArray = Array.isArray(data) ? data[0] : data;
 
-    const chart = createChart(containerRef.current, {
-      width: 200,
-      height: 300,
-      layout: {
-        background: { type: ColorType.Solid, color: '#000' },
-        textColor: '#fff',
-      },
-      grid: {
-        vertLines: { visible: false },
-        horzLines: { color: '#333' },
-      },
-      leftPriceScale: { borderColor: '#444', scaleMargins: { top: 0.3, bottom: 0.3 } },
-      timeScale: { visible: false },
+  return {
+    time: candleArray.start,
+    open: parseFloat(candleArray.open),
+    close: parseFloat(candleArray.close),
+    high: parseFloat(candleArray.high),
+    low: parseFloat(candleArray.low),
+  }
+}
+
+export default function CandlesChart({ symbol, interval }: CandleProps) {
+  const chartContainerRef = useRef(null);
+  const candleSeriesRef = useRef<CandlestickSeries | null>(null);
+  const [ candles, setCandles ] = useState<CandlestickData[]>([]);
+
+  const { subscribe } = useBybitSocket();
+
+  useLayoutEffect(() => {
+    if (!chartContainerRef.current) return;
+
+    const chartOptions = { layout: { textColor: 'black', background: { type: ColorType.Solid, color: 'white' } } };
+    const chart = createChart(chartContainerRef.current, chartOptions);
+    const candleSeries = chart.addSeries(CandlestickSeries, {
+      upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
+      wickUpColor: '#26a69a', wickDownColor: '#ef5350',
     });
 
-    const series = chart.addSeries(CandlestickSeries, {
-      upColor: '#26a69a',
-      downColor: '#ef5350',
-      borderVisible: false,
-      wickUpColor: '#26a69a',
-      wickDownColor: '#ef5350',
-    });
-
-    series.setData([candle]);
+    candleSeriesRef.current = candleSeries;
+    candleSeries.setData([]);
 
     return () => {
       chart.remove();
     };
-  }, [candle]);
+  }, [])
 
-  return <div ref={containerRef} style={{ width: '100%' }} />;
+  useEffect(() => {
+    const topic = `kline.${interval}.${symbol}`;
+
+    const unsubscribe = subscribe(topic, (message) => {
+      const newCandle = getCandle(message);
+      if (!newCandle) return;
+
+      setCandles((prev) => {
+        const updatedCandels = [...prev];
+        const index = updatedCandels.findIndex(c => c.time === newCandle.time);
+
+        if (index !== -1) {
+          updatedCandels[index] = newCandle;
+        }
+        else {
+          updatedCandels.push(newCandle);
+        }
+
+        return updatedCandels;
+      });
+    });
+
+    return unsubscribe;
+  }, [subscribe, symbol, interval])
+
+  useEffect(() => {
+    if (candleSeriesRef.current && candles.length > 0) {
+      candleSeriesRef.current.setData(candles);
+    }
+  }, [candles]);
+
+  return (
+    <VStack p={5} bg="gray.700" borderRadius="lg" w="65vw">
+      <Box 
+        ref={chartContainerRef} 
+        w="100%" 
+        h="500px"
+        borderRadius="md"
+        overflow="hidden"
+      />
+    </VStack>
+  )
 }
