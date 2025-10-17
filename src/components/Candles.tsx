@@ -1,8 +1,9 @@
 import { CandlestickSeries, ColorType, createChart } from 'lightweight-charts'
-import type { ISeriesApi, CandlestickData } from 'lightweight-charts';
+import type { ISeriesApi, CandlestickData, UTCTimestamp } from 'lightweight-charts';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { VStack, Box } from '@chakra-ui/react';
 import { useBybitSocket } from './utils/useBybitSocket';
+import { fetchHistoricalCandles } from './utils/helpfunctions';
 
 interface CandleProps {
   symbol: string;
@@ -13,10 +14,10 @@ type CandlestickSeries = ISeriesApi<'Candlestick'>;
 
 const getCandle = (message: any): CandlestickData | null => {
   const data = message.data;
-  const candleArray = Array.isArray(data) ? data[0] : data;
+  const candleArray = data[0];
 
   return {
-    time: candleArray.start,
+    time: candleArray.start / 1000 as UTCTimestamp,
     open: parseFloat(candleArray.open),
     close: parseFloat(candleArray.close),
     high: parseFloat(candleArray.high),
@@ -30,6 +31,15 @@ export default function CandlesChart({ symbol, interval }: CandleProps) {
   const [ candles, setCandles ] = useState<CandlestickData[]>([]);
 
   const { subscribe } = useBybitSocket();
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      const history = await fetchHistoricalCandles(symbol, interval);
+      setCandles(history);
+    };
+
+    loadHistory();
+  }, [symbol, interval]);
 
   useLayoutEffect(() => {
     if (!chartContainerRef.current) return;
@@ -57,17 +67,17 @@ export default function CandlesChart({ symbol, interval }: CandleProps) {
       if (!newCandle) return;
 
       setCandles((prev) => {
-        const updatedCandels = [...prev];
-        const index = updatedCandels.findIndex(c => c.time === newCandle.time);
+        const updatedCandles = [...prev];
+        const index = updatedCandles.findIndex(c => c.time === newCandle.time);
 
         if (index !== -1) {
-          updatedCandels[index] = newCandle;
+          updatedCandles[index] = newCandle;
         }
         else {
-          updatedCandels.push(newCandle);
+          updatedCandles.push(newCandle);
         }
 
-        return updatedCandels;
+        return updatedCandles;
       });
     });
 

@@ -9,7 +9,7 @@ function App() {
     <Provider>
       <HStack minW="100vw" minH="100vh" p={8}>
         <Depth symbol={'BTCUSDT'} depth={'50'} />
-        <CandlesChart symbol={'BTCUSDT'} interval={'1'} />
+        <CandlesChart symbol={'BTCUSDT'} interval={'D'} />
       </HStack>
     </Provider>
   )
