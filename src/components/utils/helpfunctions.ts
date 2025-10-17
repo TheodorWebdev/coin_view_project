@@ -1,26 +1,43 @@
 import type { CandlestickData, UTCTimestamp } from 'lightweight-charts'
 
 export function updateLevels(
-  levels: Array<[string, string]>,
-  price: string,
-  size: string,
-): Array<[string, string]> {
-  const index = levels.findIndex(([p]) => p === price);
+  bids: Map<string, string>,
+  asks: Map<string, string>,
+  delta: { b: Array<[string, string]>, a: Array<[string, string]> },
+): { newB: Map<string, string>; newA: Map<string, string> } {
+  const newB = new Map(bids);
+  const newA = new Map(asks);
 
-  if (size === '0')
-    return levels.filter((_, i) => i !== index);
-
-  if (index !== -1) {
-    return levels.map(([p, s], i) => (i === index ? [price, size] : [p, s]));
-  } else {
-    return [...levels, [price, size]];
+  for (const [price, amount] of delta.b) {
+    if (amount === "0") {
+      newB.delete(price);
+    } else {
+      newB.set(price, amount);
+    }
   }
+
+  for (const [price, amount] of delta.a) {
+    if (amount === "0") {
+      newA.delete(price);
+    } else {
+      newA.set(price, amount);
+    }
+  }
+
+  return { newB, newA };
 }
 
-export function sortOrderbook(bids: Array<[string, string]>, asks: Array<[string, string]>) {
-  const sortedBids = [...bids].sort((a, b) => parseFloat(b[0]) - parseFloat(a[0])).reverse();
-  const sortedAsks = [...asks].sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
-  return { bids: sortedBids, asks: sortedAsks };
+export function sortOrderbook(bids: Map<string, string>, asks: Map<string, string>): {
+  sortedBids: Array<[string, string]>;
+  sortedAsks: Array<[string, string]>;
+} {
+  const sortedBids = Array.from(bids.entries()).sort(
+    ([priceA], [priceB]) => parseFloat(priceA) - parseFloat(priceB)
+  );
+  const sortedAsks = Array.from(asks.entries()).sort(
+    ([priceA], [priceB]) => parseFloat(priceA) - parseFloat(priceB)
+  );
+  return { sortedBids, sortedAsks };
 }
 
 export async function fetchHistoricalCandles(

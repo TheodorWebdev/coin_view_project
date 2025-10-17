@@ -57,6 +57,10 @@ export function useBybitSocket() {
       console.error('Ошибка WebSocket:', err);
     };
 
+    wss.onclose = () => {
+      console.log('Закрыт');
+    };
+
     return () => {
       wss.close();
     };
