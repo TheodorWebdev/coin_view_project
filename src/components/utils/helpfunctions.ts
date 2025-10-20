@@ -28,16 +28,16 @@ export function updateLevels(
 }
 
 export function sortOrderbook(bids: Map<string, string>, asks: Map<string, string>): {
-  sortedBids: Array<[string, string]>;
-  sortedAsks: Array<[string, string]>;
+  bids: Map<string, string>,
+  asks: Map<string, string>,
 } {
-  const sortedBids = Array.from(bids.entries()).sort(
+  const sortedBids = new Map(Array.from(bids.entries()).sort(
     ([priceA], [priceB]) => parseFloat(priceA) - parseFloat(priceB)
-  );
-  const sortedAsks = Array.from(asks.entries()).sort(
+  ));
+  const sortedAsks = new Map(Array.from(asks.entries()).sort(
     ([priceA], [priceB]) => parseFloat(priceA) - parseFloat(priceB)
-  );
-  return { sortedBids, sortedAsks };
+  ));
+  return { bids: sortedBids, asks: sortedAsks };
 }
 
 export async function fetchHistoricalCandles(
