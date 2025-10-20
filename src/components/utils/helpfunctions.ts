@@ -1,10 +1,13 @@
+import { useContext } from 'react';
+
 import type { CandlestickData, UTCTimestamp } from 'lightweight-charts'
+import type { ExchangeContextType } from './interfaces';
+import { ExchangeContext } from './interfaces';
 
 export function updateLevels(
   bids: Map<string, string>,
   asks: Map<string, string>,
-  delta: { b: Array<[string, string]>, a: Array<[string, string]> },
-): { newB: Map<string, string>; newA: Map<string, string> } {
+  delta: { b: Array<[string, string]>, a: Array<[string, string]> },): { newB: Map<string, string>; newA: Map<string, string> } {
   const newB = new Map(bids);
   const newA = new Map(asks);
 
@@ -65,3 +68,13 @@ export async function fetchHistoricalCandles(
     return [];
   }
 };
+
+export function useExchange(): ExchangeContextType {
+  const context = useContext(ExchangeContext);
+
+  if (!context) {
+    throw new Error('useExchange must be used with ExchangeProvider');
+  }
+
+  return context;
+}

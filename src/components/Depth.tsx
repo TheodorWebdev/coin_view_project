@@ -1,20 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
 import { VStack, Box, Text, HStack, Heading } from '@chakra-ui/react';
-import { useBybitSocket } from './utils/useBybitSocket'
+import { useEffect, useRef, useState } from 'react';
+
 import { sortOrderbook, updateLevels } from './utils/helpfunctions';
-
-interface DepthProps {
-  symbol: string;
-  depth: string;
-}
-
-interface OrderBook {
-  s: string;
-  b: Map<string, string>;
-  a: Map<string, string>;
-  u: number;
-  seq: number;
-}
+// import { useBybitSocket } from './utils/useBybitSocket';
+import { useExchangeSocket } from './utils/useExchangeSocket';
+import type { OrderBook } from './utils/interfaces';
 
 const getOrderbook = (message: any, prev: OrderBook | null): OrderBook | null => {
   const data = message.data;
@@ -44,11 +34,15 @@ const getOrderbook = (message: any, prev: OrderBook | null): OrderBook | null =>
   return prev;
 }
 
-export default function Depth({ symbol, depth }: DepthProps) {
+export default function Depth({ symbol, depth }: { symbol: string, depth: string }) {
   const [ orderbook, setOrderbook ] = useState<OrderBook | null>(null);
+  // const { subscribe } = useBybitSocket();
+  
   const bidsRef = useRef<HTMLDivElement>(null);
   const [ isUserScroll, setIsUserScroll ] = useState(false);
-  const { subscribe } = useBybitSocket();
+
+  const topic = `orderbook.${depth}.${symbol}`;
+  // const topic = `${symbol.toLowerCase()}@depth${depth}`;
 
   const handleScroll = () => {
     const container = bidsRef.current;
@@ -63,15 +57,17 @@ export default function Depth({ symbol, depth }: DepthProps) {
     }
   };
 
-  useEffect(() => {
-    const topic = `orderbook.${depth}.${symbol}`;
-    
-    const unsubscribe = subscribe(topic, (message) => {
-      setOrderbook(prev => getOrderbook(message, prev))
-    });
+  useExchangeSocket(topic, (msg) => {
+    setOrderbook(prev => getOrderbook(msg, prev));
+  });
 
-    return unsubscribe;
-  }, [subscribe, symbol, depth])
+  // useEffect(() => {
+  //   const unsubscribe = subscribe(topic, (message) => {
+  //     setOrderbook(prev => getOrderbook(message, prev))
+  //   });
+
+  //   return unsubscribe;
+  // }, [subscribe, symbol, depth])
 
   useEffect(() => {
     const container = bidsRef.current;
